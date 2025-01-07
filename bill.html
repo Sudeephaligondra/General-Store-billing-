@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>SGK General Store</title>
+    <style>
+    body{
+        background-color: rgb(181, 193, 161);
+        margin-left: 30%;
+        margin-right: 30%;
+        
+    }
+    h1{
+        color: rgb(48, 2, 11);
+        font-size: 36px;
+    }
+    #modeSelection{
+        display: flex;
+        column-gap: 40px;
+    }
+    </style>
+</head>
+<body>
+
+    <h1>SGK General Store</h1>
+
+    <div id="modeSelection">
+        <button onclick="setMode('bill')">Bill Mode</button>
+        <button onclick="setMode('addItem')">Add Item Mode</button>
+    </div>
+
+    <div id="billMode" style="display: none;">
+        <h2 style="color: brown;">Bill</h2>
+        <table id="billingTable">
+            <thead>
+                <tr>
+                    <th>S.No.</th>
+                    <th>Item Name</th>
+                    <th>Price</th>
+                    <th>Quantity</th>
+                    <th>Total</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>1</td>
+                    <td>
+                        <div class="search-container">
+                            <select id="itemName1">
+                                <option value="">Select Item</option>
+                            </select>
+                            
+                        </div>
+                    </td>
+                    <td><input type="number" id="price1" min="0" step="0.01" readonly></td>
+                    <td><input type="number" id="quantity1" min="1" onchange="calculateRowTotal(1)"></td>
+                    <td id="total1"></td>
+                </tr>
+            </tbody>
+        </table>
+
+        <br>
+
+        <button onclick="addRow()">Add Row</button>
+        <br><br>
+
+        <div id="totalBill">Total Bill: ₹0.00</div>
+
+        <button onclick="calculateTotal()">Calculate Total</button>
+        <button onclick="printBill()">Print Bill</button>
+    </div>
+
+    <div id="addItemMode" style="display: none;">
+        <h2>Add Item</h2>
+        <input type="text" id="newItemName" placeholder="Item Name">
+        <input type="number" id="newItemPrice" min="0" step="0.01" placeholder="Price">
+        <button onclick="addItem()">Add Item</button>
+
+        <br><br>
+
+        <h3>Item List</h3>
+        <table id="itemList">
+            <thead>
+                <tr>
+                    <th>Item Name</th>
+                    <th>Price</th>
+                    <th>Edit</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
+
+    <script>
+        let items = []; // Array to store items and prices
+
+        // Load items from local storage (if available)
+        if (localStorage.getItem('items')) {
+            items = JSON.parse(localStorage.getItem('items'));
+            populateItemDropdown(); 
+        }
+
+        function setMode(mode) {
+            document.getElementById("billMode").style.display = (mode === 'bill') ? 'block' : 'none';
+            document.getElementById("addItemMode").style.display = (mode === 'addItem') ? 'block' : 'none';
+        }
+
+        function addItem() {
+            const newItemName = document.getElementById("newItemName").value;
+            const newItemPrice = document.getElementById("newItemPrice").value;
+
+            if (newItemName && newItemPrice) {
+                const itemExists = items.some(item => item.name === newItemName);
+                if (itemExists) {
+                    alert("Item already exists.");
+                } else {
+                    items.push({ name: newItemName, price: parseFloat(newItemPrice) });
+                    localStorage.setItem('items', JSON.stringify(items));
+                    populateItemDropdown(); 
+                    clearAddItemFields();
+                    displayItemList();
+                }
+            }
+        }
+
+        function populateItemDropdown() {
+            const allSelect = document.querySelectorAll('select[id^="itemName"]'); 
+            allSelect.forEach(select => {
+                select.innerHTML = "";
+                select.innerHTML += '<option value="">Select Item</option>';
+                items.forEach(item => {
+                    const option = document.createElement('option');
+                    option.value = item.name;
+                    option.text = item.name;
+                    select.appendChild(option);
+                });
+            });
+        }
+
+        function clearAddItemFields() {
+            document.getElementById("newItemName").value = "";
+            document.getElementById("newItemPrice").value = "";
+        }
+
+        function displayItemList() {
+            const itemListBody = document.getElementById("itemList").getElementsByTagName('tbody')[0];
+            itemListBody.innerHTML = "";
+            items.forEach((item, index) => {
+                const row = itemListBody.insertRow();
+                const cell1 = row.insertCell(0);
+                const cell2 = row.insertCell(1);
+                const cell3 = row.insertCell(2);
+                cell1.textContent = item.name;
+                cell2.textContent = `₹${item.price.toFixed(2)}`;
+                cell3.innerHTML = `<button onclick="editItem(${index})">Edit</button>`; 
+            });
+        }
+
+        function editItem(index) {
+            const item = items[index];
+            document.getElementById("newItemName").value = item.name;
+            document.getElementById("newItemPrice").value = item.price;
+            items.splice(index, 1); // Remove the item from the array
+            localStorage.setItem('items', JSON.stringify(items));
+            populateItemDropdown();
+            displayItemList();
+        }
+
+        function calculateRowTotal(row) {
+            const quantity = document.getElementById(`quantity${row}`).value;
+            const price = document.getElementById(`price${row}`).value;
+            const total = quantity * price;
+            document.getElementById(`total${row}`).textContent = `₹${total.toFixed(2)}`;
+            calculateTotal(); 
+        }
+
+        function calculateTotal() {
+            let total = 0;
+            const rows = document.getElementById("billingTable").getElementsByTagName('tr');
+            for (let i = 1; i < rows.length; i++) { // Skip header row
+                const rowTotal = parseFloat(rows[i].cells[4].textContent.replace('₹', '')); 
+                total += isNaN(rowTotal) ? 0 : rowTotal; 
+            }
+            document.getElementById("totalBill").innerText = `Total Bill: ₹${total.toFixed(2)}`;
+        }
+
+        function addRow() {
+  const rowCount = document.getElementById("billingTable").rows.length;
+  const newRow = document.createElement("tr");
+
+  newRow.innerHTML = `
+      <td>${rowCount}</td>
+      <td>
+          <div class="search-container">
+              <select id="itemName${rowCount}">
+                  <option value="">Select Item</option> 
+              </select>
+          </div>
+      </td>
+      <td><input type="number" id="price${rowCount}" min="0" step="0.01" readonly></td>
+      <td><input type="number" id="quantity${rowCount}" min="1" onchange="calculateRowTotal(${rowCount})"></td>
+      <td id="total${rowCount}"></td>
+  `;
+
+  document.getElementById("billingTable").getElementsByTagName('tbody')[0].appendChild(newRow); 
+
+  // Get the newly created select element
+  const newSelect = document.getElementById(`itemName${rowCount}`);
+
+  // Populate only the newly created select element
+  newSelect.innerHTML = "";
+  newSelect.innerHTML += '<option value="">Select Item</option>';
+  items.forEach(item => {
+    const option = document.createElement('option');
+    option.value = item.name;
+    option.text = item.name;
+    newSelect.appendChild(option);
+  });
+
+  // Select the previously selected item (if any)
+  if (rowCount > 1) { // Avoid selecting item for the first row
+    const previousRow = rowCount - 1;
+    const previousItemName = document.getElementById(`itemName${previousRow}`).value;
+    if (previousItemName) {
+      newSelect.value = previousItemName; 
+    }
+  }
+}
+
+
+function printBill() {
+  const printWindow = window.open('', '', 'width=800,height=600');
+  const today = new Date();
+const dateString = today.toLocaleDateString();
+  printWindow.document.write('<center><h1>SGK General Store</h1>');
+  printWindow.document.write(`<p>Date: ${dateString}</p>`);
+  const billingTable = document.getElementById("billingTable");
+  const tableRows = billingTable.getElementsByTagName('tr');
+
+  printWindow.document.write("<table border='1px'merge-border>"); // Create a table in the print window
+  printWindow.document.write("<tr><th>S.No.</th><th>Item Name</th><th>Price</th><th>Quantity</th><th>Total</th></tr>"); // Table header
+
+  for (let i = 1; i < tableRows.length; i++) { // Skip the header row
+    const rowData = [];
+    rowData.push(tableRows[i].cells[0].textContent);
+    rowData.push(tableRows[i].cells[0].textContent); // S.No.
+    rowData.push(tableRows[i].cells[1].children[0].children[0].value); // Item Name 
+    rowData.push(tableRows[i].cells[2].children[0].value); // Price
+    rowData.push(tableRows[i].cells[3].children[0].value); // Quantity
+    rowData.push(tableRows[i].cells[4].textContent); // Total
+    printWindow.document.write(`<tr>${rowData.join('</td><td>')}</tr>`);
+  }
+
+  printWindow.document.write("</table>");
+  printWindow.document.write(`<p>Total Bill: ${document.getElementById("totalBill").innerText}</p>`);
+  printWindow.document.write('<h3>...Thank You ...</h3>');
+  printWindow.document.write('<h3>****come again***</h3></center>');
+  printWindow.document.close();
+  printWindow.print();
+}
+        
+        function filterItems(row) {
+            const input = document.getElementById(`searchItem${row}`);
+            const filter = input.value.toUpperCase();
+            const select = document.getElementById(`itemName${row}`);
+            const options = select.options;
+
+            for (let i = 0; i < options.length; i++) {
+                const option = options[i];
+                if (option.text.toUpperCase().indexOf(filter) > -1) {
+                    option.style.display = "";
+                } else {
+                    option.style.display = "none";
+                }
+            }
+        }
+        // Event listeners for item selection and price update
+        document.addEventListener('change', function(event) {
+            if (event.target && event.target.matches('select[id^="itemName"]')) {
+                const row = event.target.id.replace('itemName', '');
+                const itemName = event.target.value;
+                const priceInput = document.getElementById(`price${row}`);
+
+                const selectedItem = items.find(item => item.name === itemName);
+                if (selectedItem) {
+                    priceInput.value = selectedItem.price;
+                } else {
+                    priceInput.value = "";
+                }
+                calculateRowTotal(row); 
+            }
+        });
+    </script>
+    <br>
+    <br>
+<marquee behavior="readonly" direction="right">....good day.....</marquee>
+</body>
+</html>
